@@ -9,6 +9,40 @@ app.get('/', (req, res) => {
     }
   });
 });
+app.get('/api/complaints', (req, res) => {
+  // 1. Run auto-escalation check
+  COMPLAINTS = COMPLAINTS.map(c => {
+    if (c.status !== 'RESOLVED') {
+      if (c.tags.includes('#FastTrack') || c.upvotes >= 30) {
+        if (c.assignedLevel === 'FIELD_INSPECTOR') c.assignedLevel = 'ASSISTANT_ENGINEER';
+        else if (c.upvotes >= 50 && c.assignedLevel === 'ASSISTANT_ENGINEER') {
+          c.assignedLevel = 'EXECUTIVE_ENGINEER';
+        }
+      }
+    }
+    return c;
+  });
+
+  // 2. Optional token check: if logged in as an official, filter by hierarchy
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.role === 'official') {
+        const levelOrder = { FIELD_INSPECTOR: 1, ASSISTANT_ENGINEER: 2, EXECUTIVE_ENGINEER: 3 };
+        const userRank = levelOrder[decoded.level] || 1;
+        const visible = COMPLAINTS.filter(c => (levelOrder[c.assignedLevel] || 1) <= userRank);
+        return res.json(visible);
+      }
+    } catch (err) {
+      // If token is invalid or expired, continue as public visitor
+    }
+  }
+
+  // 3. Unauthenticated public visitors see all complaints
+  return res.json(COMPLAINTS);
+});
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
