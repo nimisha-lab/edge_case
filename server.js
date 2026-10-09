@@ -1,3 +1,14 @@
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    message: 'SyncCivic API is running smoothly',
+    endpoints: {
+      complaints: '/api/complaints',
+      auth: '/api/auth/login',
+      alerts: '/api/alerts/send-cutdown'
+    }
+  });
+});
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
