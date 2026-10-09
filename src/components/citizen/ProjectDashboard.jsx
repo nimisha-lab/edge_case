@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PhaseStepperModal from './PhaseStepperModal';
 
 const INITIAL_PROJECTS = [
   {
@@ -11,6 +12,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-08-10',
     deliveryDate: '2026-11-20',
     status: 'In Progress',
+    currentStageIndex: 1 // Pipe Laying / Cabling
   },
   {
     id: 'PRJ-2026-094',
@@ -22,6 +24,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-07-01',
     deliveryDate: '2026-10-30',
     status: 'In Progress',
+    currentStageIndex: 2 // Asphalt Resurfacing
   },
   {
     id: 'PRJ-2026-102',
@@ -33,6 +36,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-09-15',
     deliveryDate: '2026-12-15',
     status: 'Planned',
+    currentStageIndex: 0 // Excavation
   },
   {
     id: 'PRJ-2026-044',
@@ -44,15 +48,17 @@ const INITIAL_PROJECTS = [
     startDate: '2026-05-01',
     deliveryDate: '2026-08-15',
     status: 'Completed',
+    currentStageIndex: 3 // Completed
   }
 ];
 
-export default function ProjectDashboard({ onSelectProject }) {
+export default function ProjectDashboard() {
   const [projects] = useState(INITIAL_PROJECTS);
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [wardFilter, setWardFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [activeModalProject, setActiveModalProject] = useState(null);
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -183,7 +189,7 @@ export default function ProjectDashboard({ onSelectProject }) {
 
               <button
                 type="button"
-                onClick={() => onSelectProject && onSelectProject(p)}
+                onClick={() => setActiveModalProject(p)}
                 className="mt-5 w-full rounded-xl bg-gray-900 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
               >
                 Inspect Phase & Leave Feedback →
@@ -192,6 +198,14 @@ export default function ProjectDashboard({ onSelectProject }) {
           );
         })}
       </div>
+
+      {/* Render Stepper Modal when clicked */}
+      {activeModalProject && (
+        <PhaseStepperModal
+          project={activeModalProject}
+          onClose={() => setActiveModalProject(null)}
+        />
+      )}
     </div>
   );
 }
