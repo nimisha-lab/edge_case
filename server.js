@@ -1,48 +1,3 @@
-app.get('/', (req, res) => {
-  res.json({
-    status: 'ONLINE',
-    message: 'SyncCivic API is running smoothly',
-    endpoints: {
-      complaints: '/api/complaints',
-      auth: '/api/auth/login',
-      alerts: '/api/alerts/send-cutdown'
-    }
-  });
-});
-app.get('/api/complaints', (req, res) => {
-  // 1. Run auto-escalation check
-  COMPLAINTS = COMPLAINTS.map(c => {
-    if (c.status !== 'RESOLVED') {
-      if (c.tags.includes('#FastTrack') || c.upvotes >= 30) {
-        if (c.assignedLevel === 'FIELD_INSPECTOR') c.assignedLevel = 'ASSISTANT_ENGINEER';
-        else if (c.upvotes >= 50 && c.assignedLevel === 'ASSISTANT_ENGINEER') {
-          c.assignedLevel = 'EXECUTIVE_ENGINEER';
-        }
-      }
-    }
-    return c;
-  });
-
-  // 2. Optional token check: if logged in as an official, filter by hierarchy
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      if (decoded.role === 'official') {
-        const levelOrder = { FIELD_INSPECTOR: 1, ASSISTANT_ENGINEER: 2, EXECUTIVE_ENGINEER: 3 };
-        const userRank = levelOrder[decoded.level] || 1;
-        const visible = COMPLAINTS.filter(c => (levelOrder[c.assignedLevel] || 1) <= userRank);
-        return res.json(visible);
-      }
-    } catch (err) {
-      // If token is invalid or expired, continue as public visitor
-    }
-  }
-
-  // 3. Unauthenticated public visitors see all complaints
-  return res.json(COMPLAINTS);
-});
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
@@ -52,47 +7,64 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hackathon-super-secret-key-123';
+const JWT_SECRET = process.env.JWT_SECRET || 'hackathon-civic-secret-key-2026';
 
-// Optional Twilio setup (falls back to clean console simulator if keys are missing)
 let twilioClient = null;
 if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  const twilio = require('twilio');
-  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  try {
+    const twilio = require('twilio');
+    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  } catch (e) {
+    console.log('Twilio SDK in simulator mode.');
+  }
 }
 
-// ------------------- IN-MEMORY DATA STORE -------------------
+// In-Memory Seed Users
 const USERS = [
   { id: 1, email: 'citizen@city.gov', password: '123', role: 'public', name: 'Citizen User' },
-  { id: 2, email: 'inspector@city.gov', password: '123', role: 'official', level: 'FIELD_INSPECTOR', name: 'Officer Raman' },
+  { id: 2, email: 'inspector@city.gov', password: '123', role: 'official', level: 'FIELD_INSPECTOR', name: 'Field Officer Raman' },
   { id: 3, email: 'ae@city.gov', password: '123', role: 'official', level: 'ASSISTANT_ENGINEER', name: 'AE Priya' },
   { id: 4, email: 'ee@city.gov', password: '123', role: 'official', level: 'EXECUTIVE_ENGINEER', name: 'EE Sundaram' }
 ];
 
+// Seed Complaints
 let COMPLAINTS = [
   {
     id: 101,
-    title: 'Severe pipeline leak after road trenching',
-    location: 'Ward 12, Main Street',
+    title: 'Severe pipeline leak causing waterlogging after road excavation',
+    location: 'Ward 12, Main Bazaar Road',
+    ward: 'Ward 12',
     tags: ['#FastTrack', '#WaterCut'],
     upvotes: 42,
     status: 'PENDING',
-    assignedLevel: 'ASSISTANT_ENGINEER', // Auto-escalated due to #FastTrack & high upvotes
+    assignedLevel: 'ASSISTANT_ENGINEER',
     createdAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString()
   },
   {
     id: 102,
-    title: 'Debris left on walkway after cabling work',
-    location: 'Cross Road 4',
+    title: 'Debris left on walkway post optic fiber cabling work',
+    location: 'Cross Road 4, Sector 3',
+    ward: 'Ward 8',
     tags: ['#RoadHazard'],
     upvotes: 8,
     status: 'IN_REVIEW',
     assignedLevel: 'FIELD_INSPECTOR',
     createdAt: new Date().toISOString()
+  },
+  {
+    id: 103,
+    title: 'Unrepaired trench across bus lane causing traffic congestion',
+    location: 'Anna Salai Junction',
+    ward: 'Ward 12',
+    tags: ['#TrafficDisruption'],
+    upvotes: 55,
+    status: 'ESCALATED',
+    assignedLevel: 'EXECUTIVE_ENGINEER',
+    createdAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString()
   }
 ];
 
-// ------------------- AUTH MIDDLEWARE -------------------
+// Middleware: Official Auth
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Access token required' });
@@ -104,7 +76,17 @@ const authenticate = (req, res, next) => {
   }
 };
 
-// ------------------- 1. AUTH ROUTES -------------------
+// Root Health Check
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    system: 'SyncCivic Public Works & Escalation API',
+    version: '1.0.0',
+    endpoints: ['/api/complaints', '/api/auth/login', '/api/alerts/send-cutdown']
+  });
+});
+
+// Auth Login
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   const user = USERS.find(u => u.email === email && u.password === password);
@@ -115,12 +97,15 @@ app.post('/api/auth/login', (req, res) => {
     JWT_SECRET,
     { expiresIn: '12h' }
   );
-  return res.json({ token, user: { name: user.name, role: user.role, level: user.level } });
+  return res.json({
+    token,
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, level: user.level }
+  });
 });
 
-// ------------------- 2. HIERARCHICAL COMPLAINTS & ESCALATION -------------------
-app.get('/api/complaints', authenticate, (req, res) => {
-  // Evaluation of auto-escalation rule
+// Complaints: Public Read + Tiered Filtering
+app.get('/api/complaints', (req, res) => {
+  // Auto-escalation checks
   COMPLAINTS = COMPLAINTS.map(c => {
     if (c.status !== 'RESOLVED') {
       if (c.tags.includes('#FastTrack') || c.upvotes >= 30) {
@@ -133,36 +118,61 @@ app.get('/api/complaints', authenticate, (req, res) => {
     return c;
   });
 
-  // Filter based on official rank hierarchy
-  if (req.user.role === 'official') {
-    const levelOrder = { FIELD_INSPECTOR: 1, ASSISTANT_ENGINEER: 2, EXECUTIVE_ENGINEER: 3 };
-    const userRank = levelOrder[req.user.level] || 1;
-    // Officials see tickets escalated up to their tier
-    const visible = COMPLAINTS.filter(c => (levelOrder[c.assignedLevel] || 1) <= userRank);
-    return res.json(visible);
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.role === 'official') {
+        const levelOrder = { FIELD_INSPECTOR: 1, ASSISTANT_ENGINEER: 2, EXECUTIVE_ENGINEER: 3 };
+        const userRank = levelOrder[decoded.level] || 1;
+        const visible = COMPLAINTS.filter(c => (levelOrder[c.assignedLevel] || 1) <= userRank);
+        return res.json(visible);
+      }
+    } catch (e) {}
   }
-
-  // Public users see all complaints
   return res.json(COMPLAINTS);
 });
 
-// Escalate or Resolve complaint
-app.patch('/api/complaints/:id/action', authenticate, (req, res) => {
-  const { id } = req.params;
-  const { action, nextLevel } = req.body;
-  const complaint = COMPLAINTS.find(c => c.id === parseInt(id));
+// Upvote Complaint
+app.post('/api/complaints/:id/upvote', (req, res) => {
+  const complaint = COMPLAINTS.find(c => c.id === parseInt(req.params.id));
   if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
 
-  if (action === 'ESCALATE') complaint.assignedLevel = nextLevel || 'EXECUTIVE_ENGINEER';
-  if (action === 'RESOLVE') complaint.status = 'RESOLVED';
-
-  return res.json({ message: 'Complaint updated', complaint });
+  complaint.upvotes += 1;
+  if (complaint.upvotes >= 30 && complaint.assignedLevel === 'FIELD_INSPECTOR') {
+    complaint.assignedLevel = 'ASSISTANT_ENGINEER';
+  } else if (complaint.upvotes >= 50 && complaint.assignedLevel === 'ASSISTANT_ENGINEER') {
+    complaint.assignedLevel = 'EXECUTIVE_ENGINEER';
+  }
+  return res.json({ id: complaint.id, upvotes: complaint.upvotes, assignedLevel: complaint.assignedLevel });
 });
 
-// ------------------- 3. WHATSAPP DISRUPTION ALERTS -------------------
+// Action on Complaint (Escalate / Resolve)
+app.patch('/api/complaints/:id/action', authenticate, (req, res) => {
+  const complaint = COMPLAINTS.find(c => c.id === parseInt(req.params.id));
+  if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
+
+  const { action, nextLevel } = req.body;
+  if (action === 'ESCALATE') {
+    complaint.assignedLevel = nextLevel || 'EXECUTIVE_ENGINEER';
+    complaint.status = 'ESCALATED';
+  } else if (action === 'RESOLVE') {
+    complaint.status = 'RESOLVED';
+  }
+  return res.json({ message: 'Complaint state updated', complaint });
+});
+
+// Disruption WhatsApp Alerts
 app.post('/api/alerts/send-cutdown', authenticate, async (req, res) => {
   const { ward, cutdownType, scheduledDate, message } = req.body;
-  const alertText = `🚨 *CIVIC DISRUPTION NOTICE*\nType: ${cutdownType}\nWard/Area: ${ward}\nScheduled Date: ${scheduledDate}\nDetails: ${message}\n- Sent via SyncCivic Public Works System`;
+  const alertText = 
+    `🚨 *CIVIC DISRUPTION NOTICE - SyncCivic*\n` +
+    `Type: ${cutdownType || 'Utility Shutdown'}\n` +
+    `Ward: ${ward || 'Ward 12'}\n` +
+    `Scheduled: ${scheduledDate || 'Upcoming 24 Hours'}\n` +
+    `Details: ${message || 'Pipeline maintenance under progress.'}\n` +
+    `Advisory: Plan water storage and check alternate routes.`;
 
   if (twilioClient && process.env.TWILIO_WHATSAPP_NUMBER && process.env.TARGET_PHONE) {
     try {
@@ -173,49 +183,15 @@ app.post('/api/alerts/send-cutdown', authenticate, async (req, res) => {
       });
       return res.json({ success: true, mode: 'LIVE_WHATSAPP', preview: alertText });
     } catch (err) {
-      console.error('Twilio Error:', err.message);
+      console.error(err.message);
     }
   }
 
-  // Fallback simulator for judge demonstration
-  console.log('--- [SIMULATED WHATSAPP DISPATCH] ---');
+  console.log('\n========= [SIMULATED WHATSAPP BROADCAST] =========');
   console.log(alertText);
-  console.log('--------------------------------------');
+  console.log('==================================================\n');
   return res.json({ success: true, mode: 'SIMULATED', preview: alertText });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
-// Endpoint for Person 1 to post a new citizen complaint
-app.post('/api/complaints', (req, res) => {
-  const { title, location, tags, ward } = req.body;
-  const newComplaint = {
-    id: COMPLAINTS.length + 101,
-    title,
-    location,
-    tags: tags || [],
-    ward: ward || 'Ward 12',
-    upvotes: 0,
-    status: 'PENDING',
-    assignedLevel: tags?.includes('#FastTrack') ? 'ASSISTANT_ENGINEER' : 'FIELD_INSPECTOR',
-    createdAt: new Date().toISOString()
-  };
-  COMPLAINTS.unshift(newComplaint);
-  res.status(201).json(newComplaint);
-});
-
-// Endpoint for Person 1's upvote button
-app.post('/api/complaints/:id/upvote', (req, res) => {
-  const complaint = COMPLAINTS.find(c => c.id === parseInt(req.params.id));
-  if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
-  
-  complaint.upvotes += 1;
-  // Trigger auto-escalation thresholds
-  if (complaint.upvotes >= 30 && complaint.assignedLevel === 'FIELD_INSPECTOR') {
-    complaint.assignedLevel = 'ASSISTANT_ENGINEER';
-  } else if (complaint.upvotes >= 50 && complaint.assignedLevel === 'ASSISTANT_ENGINEER') {
-    complaint.assignedLevel = 'EXECUTIVE_ENGINEER';
-  }
-  res.json({ id: complaint.id, upvotes: complaint.upvotes, assignedLevel: complaint.assignedLevel });
-});
+app.listen(PORT, () => console.log(`🚀 SyncCivic API on port ${PORT}`));
