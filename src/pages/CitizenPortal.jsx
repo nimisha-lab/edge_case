@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  fetchProjects, 
-  fetchComplaints, 
-  upvoteComplaint, 
-  fileComplaint, 
-  officialLogin, 
-  fetchEscalations 
-} from '../api/client';
+import { api } from '../api/client';
+
+// Map them to local references so the rest of your code works without changes:
+const fetchProjects = api.getProjects || api.fetchProjects || (async () => []);
+const fetchComplaints = api.getComplaints || api.fetchComplaints || (async () => []);
+const upvoteComplaint = api.upvoteComplaint || (async () => ({}));
+const fileComplaint = api.fileComplaint || (async () => ({}));
+const officialLogin = api.login || api.officialLogin || (async () => ({}));
+const fetchEscalations = api.getEscalations || api.fetchEscalations || (async () => []);
 import GrievanceRankings from '../components/GrievanceRankings';
 
 export default function CitizenPortal() {
