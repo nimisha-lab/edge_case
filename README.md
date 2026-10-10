@@ -6,6 +6,16 @@ projects (e.g. a utility digging up a road that was just resurfaced), proposes
 joint tenders to save taxpayer money, and gives citizens a transparency portal
 with complaint upvoting and per-phase feedback.
 
+#Core features focused
+1) complaint dashboard with hierarchy 
+2) feed back system(with phase wise data)
+3) different logins for public and non public 
+4) software for reducing cost by overlapping and common projects 
+5)software for tracking conflicts between two projects
+6) transparency of project data
+7) dashboard where people can up vote problems( it should contian some tags like FastTrack etc...)
+8) alert sent to whatsapp before any kind of cutdown
+
 - **Frontend:** React + Vite + Tailwind CSS (`src/`)
 - **Backend:** FastAPI + SQLAlchemy 2.0 (async) + PostGIS (`backend/`)
 - **Database:** PostgreSQL 15 with PostGIS (local, Docker or hosted)
