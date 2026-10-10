@@ -120,6 +120,21 @@ Copy `backend/.env.example` to `backend/.env` and set:
 - `POST /api/v1/complaints` — citizen complaint with coordinates
 - Full list in [`backend/README.md`](backend/README.md)
 
+#password for official login
+
+-admin@synccivic.gov
+ admin123
+
+ 
+#Official Credentials for Judges:
+
+-Field Inspector: inspector@city.gov (Password: 123)
+
+-Assistant Engineer: ae@city.gov (Password: 123)
+
+-Executive Engineer: ee@city.gov (Password: 123)
+
+
 ## License
 
 MIT
