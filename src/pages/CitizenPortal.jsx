@@ -186,7 +186,17 @@ function GrievanceFormAndList({
 export default function CitizenPortal() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [projects, setProjects] = useState([]);
-  const [complaints, setComplaints] = useState([]);
+  
+  // 1. Initial State reads from LocalStorage so complaints persist on refresh!
+  const [complaints, setComplaints] = useState(() => {
+    try {
+      const saved = localStorage.getItem('synccivic_complaints');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [selectedProject, setSelectedProject] = useState(null);
 
   const [newTitle, setNewTitle] = useState('');
@@ -197,7 +207,27 @@ export default function CitizenPortal() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [authToken, setAuthToken] = useState(null);
+
+  // 2. Initial Auth reads from LocalStorage so you stay logged in on refresh!
+  const [authToken, setAuthToken] = useState(() => {
+    return localStorage.getItem('synccivic_token') || null;
+  });
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const u = localStorage.getItem('synccivic_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Save complaints to localStorage whenever updated
+  useEffect(() => {
+    if (complaints && complaints.length > 0) {
+      localStorage.setItem('synccivic_complaints', JSON.stringify(complaints));
+    }
+  }, [complaints]);
 
   useEffect(() => {
     loadData();
@@ -205,25 +235,42 @@ export default function CitizenPortal() {
 
   async function loadData() {
     try {
-      const [projData, compData] = await Promise.all([
+      const [projData, compData] = await Promise.allSettled([
         fetchProjects(),
         fetchComplaints()
       ]);
-      if (Array.isArray(projData)) setProjects(projData);
-      if (Array.isArray(compData)) setComplaints(compData);
+
+      if (projData.status === 'fulfilled' && Array.isArray(projData.value) && projData.value.length > 0) {
+        setProjects(projData.value);
+      }
+
+      if (compData.status === 'fulfilled' && Array.isArray(compData.value) && compData.value.length > 0) {
+        // Merge backend data with any locally created complaints
+        setComplaints((prev) => {
+          const map = new Map();
+          compData.value.forEach((c) => map.set(c._id || c.id, c));
+          prev.forEach((c) => {
+            const id = c._id || c.id;
+            if (!map.has(id)) map.set(id, c);
+          });
+          return Array.from(map.values());
+        });
+      }
     } catch (err) {
-      console.error('Failed to load data from backend:', err);
+      console.warn('Backend load failed; maintaining offline cached data:', err);
     }
   }
 
   const handleUpvote = async (complaintId) => {
-    setComplaints((prev) =>
-      prev.map((item) =>
+    setComplaints((prev) => {
+      const updated = prev.map((item) =>
         item._id === complaintId || item.id === complaintId
           ? { ...item, upvotes: (item.upvotes || 0) + 1 }
           : item
-      )
-    );
+      );
+      localStorage.setItem('synccivic_complaints', JSON.stringify(updated));
+      return updated;
+    });
 
     try {
       await upvoteComplaint(complaintId);
@@ -237,30 +284,38 @@ export default function CitizenPortal() {
     if (!newTitle.trim()) return;
 
     const payload = {
+      _id: `c-${Date.now()}`,
+      id: `c-${Date.now()}`,
       title: newTitle.trim(),
       description: newDesc.trim() || 'No description provided.',
       ward: newWard.trim() || 'Ward 42',
       category: newCategory || 'Roads',
       upvotes: 0,
-      status: 'Submitted'
+      status: 'Submitted',
+      createdAt: new Date().toISOString()
     };
 
+    // Immediately save locally so it's immune to refresh
+    setComplaints((prev) => {
+      const nextList = [payload, ...prev];
+      localStorage.setItem('synccivic_complaints', JSON.stringify(nextList));
+      return nextList;
+    });
+
+    setNewTitle('');
+    setNewDesc('');
+    alert('Grievance registered and saved!');
+
+    // Fire network call in the background to sync with Render
     try {
       const created = await fileComplaint(payload);
-      const complaintWithId =
-        created && (created._id || created.id)
-          ? created
-          : { ...payload, _id: `c-${Date.now()}` };
-
-      setComplaints((prev) => [complaintWithId, ...prev]);
-      setNewTitle('');
-      setNewDesc('');
-      alert('Grievance registered and saved to ledger!');
+      if (created && (created._id || created.id)) {
+        setComplaints((prev) =>
+          prev.map((item) => (item.id === payload.id ? created : item))
+        );
+      }
     } catch (err) {
-      console.error('Error persisting grievance to backend:', err);
-      setComplaints((prev) => [{ ...payload, _id: `c-${Date.now()}` }, ...prev]);
-      setNewTitle('');
-      setNewDesc('');
+      console.warn('Backend sync failed, saved in local ledger storage:', err);
     }
   };
 
@@ -270,6 +325,15 @@ export default function CitizenPortal() {
       const auth = await officialLogin(loginEmail, loginPassword);
       if (auth && auth.token) {
         setAuthToken(auth.token);
+        setCurrentUser(auth.user || { email: loginEmail });
+        
+        // Save auth to LocalStorage so refresh does not log you out!
+        localStorage.setItem('synccivic_token', auth.token);
+        localStorage.setItem(
+          'synccivic_user',
+          JSON.stringify(auth.user || { email: loginEmail })
+        );
+
         setIsLoginModalOpen(false);
         alert('Official session active.');
       } else {
@@ -280,9 +344,17 @@ export default function CitizenPortal() {
     }
   };
 
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('synccivic_token');
+    localStorage.removeItem('synccivic_user');
+  };
+
   const sortedComplaints = [...complaints].sort(
     (a, b) => (b.upvotes || 0) - (a.upvotes || 0)
   );
+  
   const topComplaint = sortedComplaints[0] || {
     title: 'Unrepaired trench across bus lane causing traffic congestion',
     upvotes: 55,
@@ -328,14 +400,29 @@ export default function CitizenPortal() {
           ))}
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setIsLoginModalOpen(true)}
-          className="light-glass-dock rounded-full px-5 py-2 text-xs font-bold text-amber-900 hover:text-amber-950 flex items-center gap-2 border border-amber-300 transition-all hover:scale-105 shadow-sm cursor-pointer"
-        >
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          {authToken ? 'Dashboard Active' : 'Log in'}
-        </button>
+        {authToken ? (
+          <div className="flex items-center gap-2">
+            <span className="light-glass-dock rounded-full px-4 py-2 text-xs font-bold text-emerald-800 border border-emerald-300">
+              ● {currentUser?.email || 'Officer Active'}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-xs font-bold text-rose-700 hover:text-rose-900 px-3 py-2 cursor-pointer"
+            >
+              Log out
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsLoginModalOpen(true)}
+            className="light-glass-dock rounded-full px-5 py-2 text-xs font-bold text-amber-900 hover:text-amber-950 flex items-center gap-2 border border-amber-300 transition-all hover:scale-105 shadow-sm cursor-pointer"
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            Log in
+          </button>
+        )}
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto">
