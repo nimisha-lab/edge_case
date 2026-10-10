@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 
 const STAGES = [
   { id: 1, name: 'Excavation', desc: 'Trenching and ground preparation' },
-  { id: 2, name: 'Pipe Laying / Cabling', desc: 'Underground conduit or utility installation' },
-  { id: 3, name: 'Asphalt Resurfacing', desc: 'Road leveling and bitumen laying' },
-  { id: 4, name: 'Completed', desc: 'Final inspection, clearance and sign-off' }
+  { id: 2, name: 'Conduit / Utility', desc: 'Underground conduit or utility installation' },
+  { id: 3, name: 'Bitumen Layering', desc: 'Road leveling and bitumen laying' },
+  { id: 4, name: 'Commissioned', desc: 'Final inspection, clearance and sign-off' }
 ];
 
 export default function PhaseStepperModal({ project, onClose }) {
@@ -16,50 +16,43 @@ export default function PhaseStepperModal({ project, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    console.log('Phase Feedback Logged:', {
-      projectId: project.id,
-      phase: selectedPhase,
-      rating,
-      comment: feedback || 'No additional comments provided',
-      submittedAt: new Date().toISOString()
-    });
-
     setSubmitted(true);
-
     setTimeout(() => {
       onClose();
     }, 1200);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0E131F]/90 p-7 shadow-2xl backdrop-blur-2xl text-slate-100">
+        {/* Glow highlight */}
+        <div className="pointer-events-none absolute -top-20 left-1/3 h-40 w-40 rounded-full bg-emerald-500/20 blur-[80px]" />
+
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{project.name}</h2>
-            <p className="text-xs text-gray-500 font-mono mt-0.5">
-              Ref: {project.id} | Department: {project.department}
+            <h2 className="text-lg font-bold text-white tracking-tight">{project.name}</h2>
+            <p className="text-xs font-mono text-emerald-400 mt-0.5">
+              Ref ID: {project.id} • {project.department}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 text-lg transition"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition"
           >
             ✕
           </button>
         </div>
 
-        {/* Feature 2: Visual 4-Stage Stepper */}
-        <div className="my-6">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
-            Project Stage Progression
+        {/* Minimalist Glass Stepper */}
+        <div className="my-7">
+          <p className="mb-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">
+            Lifecycle Phase Progress
           </p>
           <div className="relative flex items-center justify-between">
-            <div className="absolute left-0 top-1/2 -z-0 h-1 w-full -translate-y-1/2 bg-gray-200" />
+            <div className="absolute left-0 top-1/2 -z-0 h-0.5 w-full -translate-y-1/2 bg-white/10" />
             <div
-              className="absolute left-0 top-1/2 -z-0 h-1 -translate-y-1/2 bg-emerald-600 transition-all duration-300"
+              className="absolute left-0 top-1/2 -z-0 h-0.5 -translate-y-1/2 bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-sm shadow-emerald-500"
               style={{ width: `${(currentStageIndex / (STAGES.length - 1)) * 100}%` }}
             />
             {STAGES.map((stage, idx) => {
@@ -68,19 +61,19 @@ export default function PhaseStepperModal({ project, onClose }) {
               return (
                 <div key={stage.id} className="relative z-10 flex flex-col items-center">
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-mono font-bold transition-all ${
                       isPast
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30'
                         : isCurrent
-                        ? 'border-2 border-emerald-600 bg-white text-emerald-700 ring-4 ring-emerald-100'
-                        : 'border border-gray-300 bg-white text-gray-400'
+                        ? 'border-2 border-emerald-400 bg-slate-900 text-emerald-400 ring-4 ring-emerald-500/20 shadow-md shadow-emerald-500/40'
+                        : 'border border-white/10 bg-slate-900/80 text-slate-500'
                     }`}
                   >
                     {isPast ? '✓' : idx + 1}
                   </div>
                   <span
-                    className={`mt-2 text-center text-xs max-w-[85px] leading-tight ${
-                      isCurrent ? 'font-bold text-gray-900' : 'text-gray-500 font-medium'
+                    className={`mt-2 text-center text-[11px] max-w-[85px] leading-tight ${
+                      isCurrent ? 'font-bold text-emerald-300' : 'text-slate-400 font-medium'
                     }`}
                   >
                     {stage.name}
@@ -91,17 +84,19 @@ export default function PhaseStepperModal({ project, onClose }) {
           </div>
         </div>
 
-        {/* Feature 2: Phase-Wise Feedback Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
-          <h3 className="text-sm font-semibold text-gray-800">Submit Specific Phase Feedback</h3>
+        {/* Frosted Feedback Section */}
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.02] p-5 backdrop-blur-sm">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-slate-300">
+            Submit Phase Grievance / Rating
+          </h3>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-gray-600">Select Phase to Report On</label>
+              <label className="text-[11px] font-medium text-slate-400">Target Phase</label>
               <select
                 value={selectedPhase}
                 onChange={(e) => setSelectedPhase(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2 text-xs font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 p-2 text-xs font-medium text-slate-200 focus:border-emerald-500/60 focus:outline-none"
               >
                 {STAGES.map((s) => (
                   <option key={s.id} value={s.name}>{s.name}</option>
@@ -110,41 +105,41 @@ export default function PhaseStepperModal({ project, onClose }) {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-600">Quality of Execution</label>
-              <div className="mt-1 flex items-center gap-1">
+              <label className="text-[11px] font-medium text-slate-400">Execution Score</label>
+              <div className="mt-1.5 flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     type="button"
                     key={star}
                     onClick={() => setRating(star)}
-                    className={`text-lg transition-transform hover:scale-110 ${
-                      star <= rating ? 'text-amber-400' : 'text-gray-300'
+                    className={`text-lg transition-transform hover:scale-125 ${
+                      star <= rating ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'text-white/20'
                     }`}
                   >
                     ★
                   </button>
                 ))}
-                <span className="ml-2 text-xs font-semibold text-gray-500">{rating}/5</span>
+                <span className="ml-2 font-mono text-xs text-slate-400">{rating}/5</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600">Observation / Grievance (Optional)</label>
+            <label className="text-[11px] font-medium text-slate-400">Ground Observation</label>
             <textarea
               rows={3}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="e.g., Debris not cleared after excavation, obstructing the sidewalk..."
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              placeholder="e.g. Unfinished road cutting, missing barrier..."
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900/80 p-3 text-xs text-slate-200 placeholder-slate-600 focus:border-emerald-500/60 focus:outline-none"
             />
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <div>
               {submitted && (
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                  ✓ Feedback recorded on grievance log!
+                <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                  ✓ Grievance registered on telemetry log!
                 </span>
               )}
             </div>
@@ -152,18 +147,19 @@ export default function PhaseStepperModal({ project, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
               >
-                Cancel
+                Dismiss
               </button>
               <button
                 type="submit"
-                disabled={submitted}
-                className={`rounded-lg px-5 py-2 text-xs font-semibold text-white shadow transition-all ${
-                  submitted ? 'bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                className={`rounded-xl px-5 py-2 text-xs font-bold transition-all shadow-lg ${
+                  submitted
+                    ? 'bg-emerald-600 text-slate-950'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
                 }`}
               >
-                {submitted ? 'Submitted!' : 'Submit Feedback'}
+                {submitted ? 'Recorded!' : 'Submit Feedback'}
               </button>
             </div>
           </div>
