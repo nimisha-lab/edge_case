@@ -7,9 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
+# Node / Build artifacts
+node_modules/
+dist/
 dist-ssr
+build/
 *.local
 
 # Editor directories and files
@@ -38,4 +40,3 @@ env/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-

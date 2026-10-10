@@ -12,7 +12,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-08-10',
     deliveryDate: '2026-11-20',
     status: 'In Progress',
-    currentStageIndex: 1 // Pipe Laying / Cabling
+    currentStageIndex: 1,
   },
   {
     id: 'PRJ-2026-094',
@@ -24,7 +24,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-07-01',
     deliveryDate: '2026-10-30',
     status: 'In Progress',
-    currentStageIndex: 2 // Asphalt Resurfacing
+    currentStageIndex: 2,
   },
   {
     id: 'PRJ-2026-102',
@@ -36,7 +36,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-09-15',
     deliveryDate: '2026-12-15',
     status: 'Planned',
-    currentStageIndex: 0 // Excavation
+    currentStageIndex: 0,
   },
   {
     id: 'PRJ-2026-044',
@@ -48,7 +48,7 @@ const INITIAL_PROJECTS = [
     startDate: '2026-05-01',
     deliveryDate: '2026-08-15',
     status: 'Completed',
-    currentStageIndex: 3 // Completed
+    currentStageIndex: 3,
   }
 ];
 
@@ -79,30 +79,35 @@ export default function ProjectDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header & Filter Controls */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      {/* Crystal Glass Filter Bar */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 shadow-2xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl font-black text-gray-900">Public Works Transparency Board</h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Live monitoring of public civic budgets, expenditure metrics, and delivery dates
+            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Civic Infrastructure Telemetry
+              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Live audit of capital expenditure, execution schedules, and phase milestones
             </p>
           </div>
-          <input
-            type="text"
-            placeholder="Search projects by name or ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-xs text-gray-800 focus:border-emerald-500 focus:outline-none md:w-72"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Filter by project or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full md:w-80 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2.5 text-xs text-white placeholder-slate-500 backdrop-blur-md focus:border-emerald-500/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
+            />
+          </div>
         </div>
 
-        {/* Dropdown Filters */}
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {/* Minimalist Dropdowns */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs font-medium text-gray-700 focus:outline-none"
+            className="rounded-xl border border-white/10 bg-slate-900/50 p-2.5 text-xs font-medium text-slate-300 focus:outline-none focus:border-emerald-500/50"
           >
             <option value="ALL">All Departments</option>
             <option value="Water Supply">Water Supply</option>
@@ -113,7 +118,7 @@ export default function ProjectDashboard() {
           <select
             value={wardFilter}
             onChange={(e) => setWardFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs font-medium text-gray-700 focus:outline-none"
+            className="rounded-xl border border-white/10 bg-slate-900/50 p-2.5 text-xs font-medium text-slate-300 focus:outline-none focus:border-emerald-500/50"
           >
             <option value="ALL">All Wards</option>
             <option value="Ward 12 - South">Ward 12 - South</option>
@@ -124,9 +129,9 @@ export default function ProjectDashboard() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs font-medium text-gray-700 focus:outline-none sm:col-span-1"
+            className="col-span-2 sm:col-span-1 rounded-xl border border-white/10 bg-slate-900/50 p-2.5 text-xs font-medium text-slate-300 focus:outline-none focus:border-emerald-500/50"
           >
-            <option value="ALL">All Statuses</option>
+            <option value="ALL">All Lifecycle Statuses</option>
             <option value="Planned">Planned</option>
             <option value="In Progress">In Progress</option>
             <option value="Completed">Completed</option>
@@ -134,72 +139,80 @@ export default function ProjectDashboard() {
         </div>
       </div>
 
-      {/* Project Cards Grid */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {/* Crystal Cards Grid */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredProjects.map((p) => {
           const spendPercent = Math.min(100, Math.round((p.budgetSpent / p.allottedBudget) * 100));
+
           return (
             <div
               key={p.id}
-              className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:border-emerald-300"
+              className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-xl shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-white/[0.04] hover:shadow-2xl hover:shadow-emerald-500/5"
             >
               <div>
+                {/* Badges */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold text-emerald-300 tracking-wide">
                     {p.department}
                   </span>
-                  <span className="text-[11px] font-medium text-gray-500">{p.ward}</span>
+                  <span className="text-[11px] font-mono text-slate-400">{p.ward}</span>
                 </div>
 
-                <h3 className="mt-2.5 text-base font-bold text-gray-900 leading-snug">{p.name}</h3>
-                <p className="text-[11px] font-mono text-gray-400 mt-0.5">{p.id}</p>
+                {/* Title & Ref */}
+                <h3 className="mt-4 text-base font-bold text-white group-hover:text-emerald-300 transition-colors leading-snug">
+                  {p.name}
+                </h3>
+                <p className="text-[10px] font-mono text-slate-500 mt-1 tracking-wider">{p.id}</p>
 
-                {/* Allotted Budget and Spent % Bar */}
-                <div className="mt-4 space-y-1.5">
+                {/* Minimalist Progress Meter */}
+                <div className="mt-6 space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="font-semibold text-gray-600">Budget Spent:</span>
-                    <span className="font-bold text-gray-900">{spendPercent}%</span>
+                    <span className="font-medium text-slate-400">Budget Depletion</span>
+                    <span className="font-mono font-bold text-emerald-400">{spendPercent}%</span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5 border border-white/5">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        spendPercent > 90 ? 'bg-amber-500' : 'bg-emerald-600'
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        spendPercent > 90
+                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-sm shadow-amber-500/50'
+                          : 'bg-gradient-to-r from-teal-500 to-emerald-400 shadow-sm shadow-emerald-500/50'
                       }`}
                       style={{ width: `${spendPercent}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[11px] text-gray-500">
-                    <span>Spent: {formatCurrency(p.budgetSpent)}</span>
-                    <span>Allotted: {formatCurrency(p.allottedBudget)}</span>
+                  <div className="flex justify-between text-[11px] text-slate-400 font-mono pt-1">
+                    <span>{formatCurrency(p.budgetSpent)}</span>
+                    <span className="text-slate-500">Cap: {formatCurrency(p.allottedBudget)}</span>
                   </div>
                 </div>
 
-                {/* Timeline metadata */}
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3 text-[11px]">
+                {/* Metadata Pill */}
+                <div className="mt-6 grid grid-cols-2 gap-2 border-t border-white/5 pt-4 text-[11px]">
                   <div>
-                    <span className="block text-gray-400">Start Date</span>
-                    <span className="font-medium text-gray-700">{p.startDate}</span>
+                    <span className="block text-slate-500 text-[10px] uppercase font-mono">Commissioned</span>
+                    <span className="font-mono text-slate-300">{p.startDate}</span>
                   </div>
                   <div>
-                    <span className="block text-gray-400">Expected Delivery</span>
-                    <span className="font-medium text-gray-700">{p.deliveryDate}</span>
+                    <span className="block text-slate-500 text-[10px] uppercase font-mono">Target Sign-Off</span>
+                    <span className="font-mono text-slate-300">{p.deliveryDate}</span>
                   </div>
                 </div>
               </div>
 
+              {/* Action Button */}
               <button
                 type="button"
                 onClick={() => setActiveModalProject(p)}
-                className="mt-5 w-full rounded-xl bg-gray-900 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
+                className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-white/[0.06] hover:bg-emerald-500 hover:text-slate-950 border border-white/10 hover:border-emerald-400 py-2.5 text-xs font-semibold text-slate-200 transition-all duration-200 group-hover:border-emerald-500/40"
               >
-                Inspect Phase & Leave Feedback →
+                <span>Audit Stage & Feedback</span>
+                <span>→</span>
               </button>
             </div>
           );
         })}
       </div>
 
-      {/* Render Stepper Modal when clicked */}
       {activeModalProject && (
         <PhaseStepperModal
           project={activeModalProject}
