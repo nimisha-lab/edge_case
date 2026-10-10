@@ -120,6 +120,12 @@ Copy `backend/.env.example` to `backend/.env` and set:
 - `POST /api/v1/complaints` — citizen complaint with coordinates
 - Full list in [`backend/README.md`](backend/README.md)
 
+live api--https://edge-case-1-68i2.onrender.com 
+
+escalation frontend--https://synccivic-frontend.vercel.app
+
+final deployed link--https://synccivic.vercel.app/ (judges please use the below username and passwords to login into official dashboards)
+
 #password for official login
 
 -admin@synccivic.gov
