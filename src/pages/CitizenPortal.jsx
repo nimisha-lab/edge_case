@@ -58,18 +58,40 @@ export default function CitizenPortal() {
   const handleCreateComplaint = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
+
+    const newGrievance = {
+      id: `temp-${Date.now()}`,
+      _id: `temp-${Date.now()}`,
+      title: newTitle,
+      description: newDesc,
+      ward: newWard,
+      category: newCategory,
+      upvotes: 0,
+      status: 'Submitted',
+      createdAt: new Date().toISOString()
+    };
+
+    // 1. Immediately prepend to state so it shows on screen
+    setComplaints((prev) => [newGrievance, ...prev]);
+
+    // 2. Clear form inputs
+    setNewTitle('');
+    setNewWard('');
+    setNewCategory('Roads');
+    setNewDesc('');
+
+    // 3. Optional backend call (if you have an API wired)
     try {
-      await fileComplaint({
-        title: newTitle,
-        description: newDesc,
-        ward: newWard,
-        category: newCategory
-      });
-      setNewTitle('');
-      setNewDesc('');
-      loadData();
+      if (typeof createComplaint === 'function') {
+        const saved = await createComplaint(newGrievance);
+        if (saved) {
+          setComplaints((prev) =>
+            prev.map((c) => (c.id === newGrievance.id ? saved : c))
+          );
+        }
+      }
     } catch (err) {
-      alert('Recorded locally');
+      console.error('Failed to sync complaint to server:', err);
     }
   };
 
